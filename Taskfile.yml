@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
+version: '3'
+
+tasks:
+
+  generate:
+    desc: Generate code with buf
+    cmds:
+      - buf lint
+      - buf generate
+
+  tidy:
+    desc: Tidy Go module dependencies
+    cmds:
+      - go mod tidy
+
+  test:
+    desc: Run tests
+    cmds:
+      - gotestsum --format testname --junitfile junit.xml -- -coverprofile=cover.out ./...
+
+  build:
+    desc: Build the project
+    vars:
+      EXT: '{{if eq OS "windows"}}.exe{{end}}'
+    cmds:
+      - go build -o bin/client{{.EXT}} ./cmd/client
+      - go build -o bin/server{{.EXT}} ./cmd/server
+      - go build -o bin/admin{{.EXT}} ./cmd/admin
+
+  server:
+    desc: Run the server
+    cmds:
+      - go run ./cmd/server
+
+  client:
+    desc: Run the client
+    cmds:
+      - go run ./cmd/client
+
+  admin:
+    desc: Run the admin tool
+    vars:
+      AGENT: '{{.AGENT | default ""}}'
+    cmds:
+      - 'go run ./cmd/admin {{if .AGENT}}-agent {{.AGENT}}{{end}}'
+
+  snapshot:
+    desc: Run a snapshot release with goreleaser
+    cmds:
+      - goreleaser release --snapshot --clean --skip=publish --skip=sign

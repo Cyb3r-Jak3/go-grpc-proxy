@@ -1,0 +1,139 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
+
+version: 2
+
+before:
+  hooks:
+    - task tidy
+    - task generate
+
+builds:
+  - id: client
+    main: ./cmd/client/main.go
+    binary: client
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+      - freebsd
+    goarch:
+      - arm64
+      - amd64
+    ldflags:
+      - -s -w
+      - -X github.com/go-grpc-proxy/internal/version.Version={{.Version}}
+      - -X github.com/go-grpc-proxy/internal/version.Date={{.Date}}
+      - -X github.com/go-grpc-proxy/internal/version.Commit={{.Commit}}
+  - id: server
+    main: ./cmd/server/main.go
+    binary: server
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - arm64
+      - amd64
+    ldflags:
+      - -s -w
+      - -X github.com/go-grpc-proxy/internal/version.Version={{.Version}}
+      - -X github.com/go-grpc-proxy/internal/version.Date={{.Date}}
+      - -X github.com/go-grpc-proxy/internal/version.Commit={{.Commit}}
+  - id: admin
+    main: ./cmd/admin/main.go
+    binary: admin
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - arm64
+      - amd64
+    ldflags:
+      - -s -w
+      - -X github.com/go-grpc-proxy/internal/version.Version={{.Version}}
+      - -X github.com/go-grpc-proxy/internal/version.Date={{.Date}}
+      - -X github.com/go-grpc-proxy/internal/version.Commit={{.Commit}}
+
+archives:
+  - id: archive_client
+    ids: [client]
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_client_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+  - id: archive_server
+    ids: [server]
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_server_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+  - id: archive_admin
+    ids: [admin]
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_admin_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+  - id: client_binary
+    ids: [client]
+    formats: [ 'binary' ]
+    name_template: "{{ .Binary }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+  - id: server_binary
+    ids: [server]
+    formats: [ 'binary' ]
+    name_template: "{{ .Binary }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+  - id: admin_binary
+    ids: [admin]
+    formats: [ 'binary' ]
+    name_template: "{{ .Binary }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+release:
+  footer: >-
+
+    ---
+
+    Released by [GoReleaser](https://github.com/goreleaser/goreleaser).
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  version_template: "{{ .Version }}-snapshot-{{ .ShortCommit }}"
+
+sboms:
+  - artifacts: archive

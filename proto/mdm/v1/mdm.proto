@@ -1,0 +1,134 @@
+syntax = "proto3";
+
+package mdm.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/Cyb3r-Jak3/go-grpc-proxy/gen/mdm/v1;mdmv1";
+
+// AgentService is the surface the managed client (agent) talks to on the
+// server. The agent checks in periodically and, when instructed, opens a
+// long-lived bidirectional ProxySession stream that the server bridges to an
+// admin.
+service AgentService {
+  // CheckIn is a unary heartbeat. The agent calls it every X seconds. The
+  // response tells the agent whether the server wants it to open a proxy
+  // session on this check-in.
+  rpc CheckIn(CheckInRequest) returns (CheckInResponse);
+
+  // ProxySession is a bidirectional stream opened by the agent only after a
+  // CheckInResponse asked it to. The agent's first frame must be a ProxyHello
+  // identifying the session; after that, frames carry session data in both
+  // directions.
+  rpc ProxySession(stream ProxyFrame) returns (stream ProxyFrame);
+
+  // Disconnect is a best-effort goodbye the agent sends when it is shutting
+  // down. The server marks the agent offline and tears down any active or
+  // pending session for it, so admins get a clean end rather than a stream
+  // error.
+  rpc Disconnect(DisconnectRequest) returns (DisconnectResponse);
+}
+
+// AdminService is the surface the admin tool talks to on the server.
+service AdminService {
+  // Session is a bidirectional stream. The admin's first frame must be an
+  // AdminAttach naming the target agent. The server replies with SessionEvent
+  // frames describing progress (waiting -> connected -> ended) and, once the
+  // bridge is live, relays data frames to and from the agent.
+  rpc Session(stream AdminFrame) returns (stream AdminFrame);
+
+  // ListAgents returns every agent the server currently knows about, including
+  // those that have gone offline, so an operator can discover agent IDs.
+  rpc ListAgents(ListAgentsRequest) returns (ListAgentsResponse);
+}
+
+// ClientStatus is a coarse agent state reported on each check-in.
+enum ClientStatus {
+  CLIENT_STATUS_UNSPECIFIED = 0;
+  CLIENT_STATUS_IDLE = 1;
+  CLIENT_STATUS_BUSY = 2;
+  CLIENT_STATUS_OFFLINE = 3; // agent sent Disconnect or is otherwise gone
+}
+
+message CheckInRequest {
+  string client_id = 1;
+  ClientStatus status = 2;
+  // tags and description are set by the client at run time (e.g. via flags)
+  // and reported on every check-in so the server's view stays current.
+  repeated string tags = 3;
+  string description = 4;
+}
+
+message CheckInResponse {
+  // When true, the agent should immediately open a ProxySession stream and
+  // send a ProxyHello carrying session_id.
+  bool start_session = 1;
+  string session_id = 2;
+}
+
+// ProxyHello is the first frame an agent sends on a ProxySession stream.
+message ProxyHello {
+  string client_id = 1;
+  string session_id = 2;
+}
+
+// ProxyFrame flows in both directions on the agent's ProxySession stream.
+message ProxyFrame {
+  oneof payload {
+    ProxyHello hello = 1; // agent -> server, first frame only
+    bytes data = 2;       // bidirectional payload
+  }
+}
+
+// AdminAttach is the first frame an admin sends on a Session stream.
+message AdminAttach {
+  string agent_id = 1;
+}
+
+// SessionState tracks the lifecycle of an admin<->agent bridge.
+enum SessionState {
+  SESSION_STATE_UNSPECIFIED = 0;
+  SESSION_STATE_WAITING = 1;   // waiting for the agent to check in
+  SESSION_STATE_CONNECTED = 2; // bridge is live
+  SESSION_STATE_ENDED = 3;     // session closed
+  SESSION_STATE_REJECTED = 4;  // agent busy or request refused
+}
+
+message SessionEvent {
+  SessionState state = 1;
+  string message = 2;
+}
+
+// AdminFrame flows in both directions on the admin's Session stream.
+message AdminFrame {
+  oneof payload {
+    AdminAttach attach = 1;    // admin -> server, first frame only
+    bytes data = 2;            // bidirectional payload
+    SessionEvent event = 3;    // server -> admin, lifecycle updates
+  }
+}
+
+message DisconnectRequest {
+  string client_id = 1;
+}
+
+message DisconnectResponse {}
+
+message ListAgentsRequest {}
+
+// AgentInfo is the server's current view of a single agent.
+message AgentInfo {
+  string client_id = 1;
+  ClientStatus status = 2;
+  google.protobuf.Timestamp last_check_in = 3;
+  // in_session is true when an admin is attached to or waiting on this agent.
+  bool in_session = 4;
+  // tags and description are the values the client last reported on
+  // check-in, for operator-facing identification and filtering.
+  repeated string tags = 5;
+  string description = 6;
+}
+
+message ListAgentsResponse {
+  repeated AgentInfo agents = 1;
+}

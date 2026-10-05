@@ -123,11 +123,7 @@ changelog:
       - "^test:"
 
 release:
-  footer: >-
-
-    ---
-
-    Released by [GoReleaser](https://github.com/goreleaser/goreleaser).
+  draft: true
 
 checksum:
   name_template: 'checksums.txt'
@@ -137,3 +133,17 @@ snapshot:
 
 sboms:
   - artifacts: archive
+
+
+blobs:
+  - provider: s3
+    region: auto
+    endpoint: https://8be772befd147a8df540aae0fa15c047.r2.cloudflarestorage.com
+    bucket: public-files
+    ids:
+      - admin_binary
+      - server_binary
+      - client_binary
+      - archive_admin
+      - archive_server
+      - archive_client

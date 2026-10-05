@@ -22,11 +22,12 @@ builds:
     goarch:
       - arm64
       - amd64
-    ldflags:
+    ldflags: &ldflags
       - -s -w
       - -X github.com/go-grpc-proxy/internal/version.Version={{.Version}}
       - -X github.com/go-grpc-proxy/internal/version.Date={{.Date}}
       - -X github.com/go-grpc-proxy/internal/version.Commit={{.Commit}}
+      - -extldflags "-static"
   - id: server
     main: ./cmd/server/main.go
     binary: server
@@ -39,11 +40,7 @@ builds:
     goarch:
       - arm64
       - amd64
-    ldflags:
-      - -s -w
-      - -X github.com/go-grpc-proxy/internal/version.Version={{.Version}}
-      - -X github.com/go-grpc-proxy/internal/version.Date={{.Date}}
-      - -X github.com/go-grpc-proxy/internal/version.Commit={{.Commit}}
+    ldflags: *ldflags
   - id: admin
     main: ./cmd/admin/main.go
     binary: admin
@@ -56,11 +53,7 @@ builds:
     goarch:
       - arm64
       - amd64
-    ldflags:
-      - -s -w
-      - -X github.com/go-grpc-proxy/internal/version.Version={{.Version}}
-      - -X github.com/go-grpc-proxy/internal/version.Date={{.Date}}
-      - -X github.com/go-grpc-proxy/internal/version.Commit={{.Commit}}
+    ldflags: *ldflags
 
 archives:
   - id: archive_client
